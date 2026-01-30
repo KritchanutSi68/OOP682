@@ -6,5 +6,5 @@ class Staff(Person):
         self.staff_Id = staff_id
     
     def __str__(self):
-        return f"Staff: {self.personal_id} Name: {self_name} age: {self.age}"
+        return f"Staff: {self.personal_id} Name: {self.name} age: {self.age}"
 
