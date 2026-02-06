@@ -1,0 +1,55 @@
+from fastapi import FastAPI, Depends
+from typing import List
+from .models import Task, TaskCreate
+from .repositories import InMemoryTaskRepository, ITaskRepository
+from .services import TaskService
+from .database import SessionLocal
+from sqlalchemy.orm import Session
+from .database import engine
+from . import models_orm
+from pydantic import BaseModel
+from typing import Optional
+from fastapi import FastAPI, HTTPException
+
+
+models_orm.Base.metadata.create_all(bind=engine)
+app = FastAPI()
+
+# Singleton Repository Instance
+task_repo = InMemoryTaskRepository()
+
+def get_db():
+    db = SessionLocal()  # เปิดประตูบ้านของจริงแล้ว
+    try:
+        yield db
+    finally:
+        db.close()  # ปิดประตูทุกครั้งหลังใช้งานเสร็จ
+
+# ใหม่ (ใช้ SQL):
+def get_task_service(db: Session = Depends(get_db)):
+    repo = SqlTaskRepository(db)
+    return TaskService(repo)
+
+@app.get("/tasks", response_model=List[Task])
+def read_tasks(service: TaskService = Depends(get_task_service)):
+    return service.get_tasks()
+
+@app.post("/tasks", response_model=Task)
+def create_task(
+    task: TaskCreate, 
+    service: TaskService = Depends(get_task_service)
+):
+    return service.create_task(task)
+
+@app.put("/tasks/{task_id}/complete")
+def mark_task_complete(
+    task_id: int,
+    service: TaskService = Depends(get_task_service)
+):
+    task = service.mark_complete(task_id)
+
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    return task
+
